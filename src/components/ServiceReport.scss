@@ -1,0 +1,224 @@
+.report-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+  background: #f0f0f0;
+  min-height: 100vh;
+  font-family: 'Arial', sans-serif;
+}
+
+.report-page {
+  background: #fff;
+  width: 794px; // A4-ish width
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  border: 1px solid #bbb;
+}
+
+// ── Header ──────────────────────────────────────────────
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 16px 8px;
+  border-bottom: 2px solid #222;
+
+  .logo-area {
+    .logo-placeholder {
+      border: 2px solid #333;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: #111;
+      display: inline-block;
+      font-style: italic;
+    }
+    .tagline {
+      font-size: 8px;
+      color: #555;
+      margin-top: 2px;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  .contact-info {
+    text-align: right;
+    font-size: 10px;
+    line-height: 1.6;
+    color: #222;
+
+    .contact-title {
+      font-weight: 700;
+      font-size: 11px;
+    }
+  }
+}
+
+.report-address {
+  text-align: center;
+  font-size: 9.5px;
+  color: #333;
+  padding: 4px 16px;
+  border-bottom: 1px solid #aaa;
+}
+
+// ── Title bar ────────────────────────────────────────────
+.report-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 0 0;
+  border-bottom: 2px solid #222;
+
+  .title-label {
+    background: #222;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 14px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .report-no-area {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding-right: 16px;
+
+    .report-no-label {
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .report-no-value {
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: 2px;
+    }
+  }
+}
+
+// ── Main table ───────────────────────────────────────────
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  color: #111;
+
+  td,
+  th {
+    border: 1px solid #666;
+    padding: 4px 7px;
+    vertical-align: top;
+  }
+
+  // No outer border for cells at the edge — the page itself has border
+  &.outer-collapse td:first-child {
+    border-left: none;
+  }
+
+  .cell-label {
+    font-weight: 600;
+    white-space: nowrap;
+    color: #222;
+    font-size: 10.5px;
+  }
+
+  .cell-value {
+    min-height: 20px;
+  }
+
+  .field-line {
+    border-bottom: 1px solid #555;
+    min-width: 60px;
+    display: inline-block;
+    height: 14px;
+  }
+
+  // Checkbox style
+  .cb {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border: 1px solid #333;
+    margin-right: 3px;
+    vertical-align: middle;
+    background: transparent;
+    flex-shrink: 0;
+  }
+
+  .checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10.5px;
+      cursor: default;
+    }
+  }
+
+  // tall cells (for text-area style content)
+  .cell-tall {
+    min-height: 56px;
+    height: 56px;
+  }
+
+  .cell-xlarge {
+    min-height: 80px;
+    height: 80px;
+  }
+
+  .cell-medium {
+    min-height: 44px;
+    height: 44px;
+  }
+
+  .cell-sig {
+    min-height: 36px;
+    height: 36px;
+  }
+
+  // Section-header cells (dark background)
+  .cell-section {
+    background: #f5f5f5;
+    font-weight: 700;
+    font-size: 10px;
+    text-align: center;
+    letter-spacing: 0.3px;
+  }
+
+  .cell-center {
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .cell-right {
+    text-align: right;
+  }
+
+  // Date row
+  .date-row td {
+    border-top: none;
+    border-bottom: 1px solid #666;
+  }
+}
+
+// ── Signature row ─────────────────────────────────────────
+.sig-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 7px 4px;
+  font-size: 10.5px;
+
+  span:last-child {
+    font-weight: 600;
+  }
+}
