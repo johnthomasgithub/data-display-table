@@ -1,7 +1,7 @@
-import BreakdownServiceReport from "@/components/BreakdownServiceReport";
+import ServiceReportForm from "@/components/ServiceReportForm";
 
 const Index = () => {
-  return <BreakdownServiceReport />;
+  return <ServiceReportForm />;
 };
 
 export default Index;
