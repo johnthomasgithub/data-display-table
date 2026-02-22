@@ -56,6 +56,7 @@ export interface ReportData {
   customerSignatureImg?: string;
   technicianRemarks?: string;
   technicianName?: string;
+  technicianMobile?: string;
   technicianSignatureImg?: string;
 }
 
@@ -434,6 +435,9 @@ const ServiceReport = ({ data = {} }: Props) => {
                 style={{ textAlign: "right" }}
               >
                 <div className="cell-label">Signature with Mob. No.</div>
+                {data.technicianMobile && (
+                  <div style={{ fontSize: 10, marginBottom: 2 }}>Mob: {data.technicianMobile}</div>
+                )}
                 {data.technicianSignatureImg && (
                   <img src={data.technicianSignatureImg} alt="Technician Signature" style={{ maxHeight: 60, marginLeft: "auto" }} />
                 )}

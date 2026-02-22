@@ -98,6 +98,7 @@ interface FormValues {
   customerSignature: string;
   technicianRemarks: string;
   technicianName: string;
+  technicianMobile: string;
   technicianSignature: string;
 }
 
@@ -115,7 +116,7 @@ const defaultValues: FormValues = {
   drainHeaterNos: "", drainHeaterAmps: "",
   serviceRendered: "", materialUsed: "", materialType: "",
   customerRemarks: "", customerName: "", customerSignature: "",
-  technicianRemarks: "", technicianName: "", technicianSignature: "",
+  technicianRemarks: "", technicianName: "", technicianMobile: "", technicianSignature: "",
 };
 
 function loadSaved(): FormValues {
@@ -207,6 +208,7 @@ const ServiceReportForm = () => {
       customerSignatureImg: values.customerSignature,
       technicianRemarks: values.technicianRemarks,
       technicianName: values.technicianName,
+      technicianMobile: values.technicianMobile,
       technicianSignatureImg: values.technicianSignature,
     };
     navigate("/report", { state: { reportData } });
@@ -629,9 +631,15 @@ const ServiceReportForm = () => {
                 <Label htmlFor="technicianRemarks">Technician's Remarks</Label>
                 <Textarea id="technicianRemarks" rows={3} placeholder="Technician remarks..." {...register("technicianRemarks")} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="technicianName">Technician Name</Label>
-                <Input id="technicianName" placeholder="Enter name" {...register("technicianName")} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="technicianName">Technician Name</Label>
+                  <Input id="technicianName" placeholder="Enter name" {...register("technicianName")} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="technicianMobile">Mobile No.</Label>
+                  <Input id="technicianMobile" placeholder="Enter mobile number" {...register("technicianMobile")} />
+                </div>
               </div>
               <Controller
                 control={control}
