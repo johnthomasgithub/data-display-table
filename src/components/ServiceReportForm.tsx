@@ -1,7 +1,8 @@
 import { useForm, Controller } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import SelectWithOther from "@/components/SelectWithOther";
+import SignatureCanvas from "@/components/SignatureCanvas";
 import type { ReportData } from "@/components/ServiceReport";
 
 const CLIENT_OPTIONS = [
@@ -49,6 +51,8 @@ const INSPECTION_OPTIONS = [
   "Commissioning",
 ];
 
+const STORAGE_KEY = "service-report-form-data";
+
 interface FormValues {
   client: string;
   date: Date | undefined;
@@ -62,7 +66,6 @@ interface FormValues {
   compModel: string;
   compSlNo: string;
   coolingCondition: string;
-  // Electrical
   voltageRY: string;
   voltageYB: string;
   voltageBR: string;
@@ -73,58 +76,85 @@ interface FormValues {
   compA: string;
   condA: string;
   evapA: string;
-  // Pressure
   cutInHp: string;
   cutInLp: string;
   cutInThermostate: string;
   cutOutHp: string;
   cutOutLp: string;
   cutOutThermostate: string;
-  // Compressor
   compressorOilLevel: string;
   liquidIndicatorLevel: string;
-  // Heaters
   coilHeaterNos: string;
   coilHeaterAmps: string;
   trayHeaterNos: string;
   trayHeaterAmps: string;
   drainHeaterNos: string;
   drainHeaterAmps: string;
-  // Service
   serviceRendered: string;
-  // Material
   materialUsed: string;
   materialType: string;
-  // Customer
   customerRemarks: string;
   customerName: string;
   customerSignature: string;
-  // Technician
   technicianRemarks: string;
   technicianName: string;
   technicianSignature: string;
 }
 
+const defaultValues: FormValues = {
+  client: "", date: undefined, natureOfComplaint: "", natureOfService: "",
+  briefInspection: "", reportNo: "", equipment: "", condSlNo: "", evapSlNo: "",
+  compModel: "", compSlNo: "", coolingCondition: "",
+  voltageRY: "", voltageYB: "", voltageBR: "",
+  rtC: "", sp: "", dp: "", op: "", compA: "", condA: "", evapA: "",
+  cutInHp: "", cutInLp: "", cutInThermostate: "",
+  cutOutHp: "", cutOutLp: "", cutOutThermostate: "",
+  compressorOilLevel: "", liquidIndicatorLevel: "",
+  coilHeaterNos: "", coilHeaterAmps: "",
+  trayHeaterNos: "", trayHeaterAmps: "",
+  drainHeaterNos: "", drainHeaterAmps: "",
+  serviceRendered: "", materialUsed: "", materialType: "",
+  customerRemarks: "", customerName: "", customerSignature: "",
+  technicianRemarks: "", technicianName: "", technicianSignature: "",
+};
+
+function loadSaved(): FormValues {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultValues;
+    const parsed = JSON.parse(raw);
+    if (parsed.date) parsed.date = new Date(parsed.date);
+    return { ...defaultValues, ...parsed };
+  } catch {
+    return defaultValues;
+  }
+}
+
 const ServiceReportForm = () => {
   const navigate = useNavigate();
-  const { control, register, handleSubmit } = useForm<FormValues>({
-    defaultValues: {
-      client: "", date: undefined, natureOfComplaint: "", natureOfService: "",
-      briefInspection: "", reportNo: "", equipment: "", condSlNo: "", evapSlNo: "",
-      compModel: "", compSlNo: "", coolingCondition: "",
-      voltageRY: "", voltageYB: "", voltageBR: "",
-      rtC: "", sp: "", dp: "", op: "", compA: "", condA: "", evapA: "",
-      cutInHp: "", cutInLp: "", cutInThermostate: "",
-      cutOutHp: "", cutOutLp: "", cutOutThermostate: "",
-      compressorOilLevel: "", liquidIndicatorLevel: "",
-      coilHeaterNos: "", coilHeaterAmps: "",
-      trayHeaterNos: "", trayHeaterAmps: "",
-      drainHeaterNos: "", drainHeaterAmps: "",
-      serviceRendered: "", materialUsed: "", materialType: "",
-      customerRemarks: "", customerName: "", customerSignature: "",
-      technicianRemarks: "", technicianName: "", technicianSignature: "",
-    },
+  const { control, register, handleSubmit, watch, reset } = useForm<FormValues>({
+    defaultValues: loadSaved(),
   });
+
+  // Persist form data to sessionStorage on every change
+  const formValues = watch();
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(formValues));
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [formValues]);
+
+  const handleClearForm = () => {
+    sessionStorage.removeItem(STORAGE_KEY);
+    reset(defaultValues);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+      e.preventDefault();
+    }
+  };
 
   const onSubmit = (values: FormValues) => {
     const reportData: ReportData = {
@@ -174,8 +204,10 @@ const ServiceReportForm = () => {
       materialNonChargeable: values.materialType === "nonChargeable",
       customerRemarks: values.customerRemarks,
       customerName: values.customerName,
+      customerSignatureImg: values.customerSignature,
       technicianRemarks: values.technicianRemarks,
       technicianName: values.technicianName,
+      technicianSignatureImg: values.technicianSignature,
     };
     navigate("/report", { state: { reportData } });
   };
@@ -192,7 +224,7 @@ const ServiceReportForm = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="space-y-6">
 
           {/* ── General Information ── */}
           <Card>
@@ -573,16 +605,17 @@ const ServiceReportForm = () => {
                 <Label htmlFor="customerRemarks">Customer's Remarks</Label>
                 <Textarea id="customerRemarks" rows={3} placeholder="Customer remarks..." {...register("customerRemarks")} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customerName">Customer Name</Label>
-                  <Input id="customerName" placeholder="Enter name" {...register("customerName")} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="customerSignature">Signature with Seal</Label>
-                  <Input id="customerSignature" placeholder="Enter signature details" {...register("customerSignature")} />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="customerName">Customer Name</Label>
+                <Input id="customerName" placeholder="Enter name" {...register("customerName")} />
               </div>
+              <Controller
+                control={control}
+                name="customerSignature"
+                render={({ field }) => (
+                  <SignatureCanvas value={field.value} onChange={field.onChange} label="Customer Signature with Seal" />
+                )}
+              />
             </CardContent>
           </Card>
 
@@ -596,23 +629,29 @@ const ServiceReportForm = () => {
                 <Label htmlFor="technicianRemarks">Technician's Remarks</Label>
                 <Textarea id="technicianRemarks" rows={3} placeholder="Technician remarks..." {...register("technicianRemarks")} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="technicianName">Technician Name</Label>
-                  <Input id="technicianName" placeholder="Enter name" {...register("technicianName")} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="technicianSignature">Signature with Mob. No.</Label>
-                  <Input id="technicianSignature" placeholder="Enter mobile no." {...register("technicianSignature")} />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="technicianName">Technician Name</Label>
+                <Input id="technicianName" placeholder="Enter name" {...register("technicianName")} />
               </div>
+              <Controller
+                control={control}
+                name="technicianSignature"
+                render={({ field }) => (
+                  <SignatureCanvas value={field.value} onChange={field.onChange} label="Technician Signature with Mob. No." />
+                )}
+              />
             </CardContent>
           </Card>
 
-          {/* Submit */}
-          <Button type="submit" className="w-full" size="lg">
-            Generate Report
-          </Button>
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button type="submit" className="flex-1" size="lg">
+              Generate Report
+            </Button>
+            <Button type="button" variant="outline" size="lg" onClick={handleClearForm} className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4" /> Clear Form
+            </Button>
+          </div>
         </form>
       </div>
     </div>

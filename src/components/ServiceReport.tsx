@@ -53,8 +53,10 @@ export interface ReportData {
   materialNonChargeable?: boolean;
   customerRemarks?: string;
   customerName?: string;
+  customerSignatureImg?: string;
   technicianRemarks?: string;
   technicianName?: string;
+  technicianSignatureImg?: string;
 }
 
 interface Props {
@@ -406,6 +408,9 @@ const ServiceReport = ({ data = {} }: Props) => {
                 style={{ textAlign: "right" }}
               >
                 <div className="cell-label">Signature with Seal</div>
+                {data.customerSignatureImg && (
+                  <img src={data.customerSignatureImg} alt="Customer Signature" style={{ maxHeight: 60, marginLeft: "auto" }} />
+                )}
               </td>
             </tr>
 
@@ -429,6 +434,9 @@ const ServiceReport = ({ data = {} }: Props) => {
                 style={{ textAlign: "right" }}
               >
                 <div className="cell-label">Signature with Mob. No.</div>
+                {data.technicianSignatureImg && (
+                  <img src={data.technicianSignatureImg} alt="Technician Signature" style={{ maxHeight: 60, marginLeft: "auto" }} />
+                )}
               </td>
             </tr>
           </tbody>
