@@ -23,6 +23,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import SelectWithOther from "@/components/SelectWithOther";
 import SignatureCanvas from "@/components/SignatureCanvas";
 import type { ReportData } from "@/components/ServiceReport";
@@ -54,6 +61,7 @@ const INSPECTION_OPTIONS = [
 const STORAGE_KEY = "service-report-form-data";
 
 interface FormValues {
+  reportType: "service" | "breakdown";
   client: string;
   date: Date | undefined;
   natureOfComplaint: string;
@@ -95,6 +103,7 @@ interface FormValues {
   materialType: string;
   customerRemarks: string;
   customerName: string;
+  customerMobile: string;
   customerSignature: string;
   technicianRemarks: string;
   technicianName: string;
@@ -103,6 +112,7 @@ interface FormValues {
 }
 
 const defaultValues: FormValues = {
+  reportType: "breakdown",
   client: "", date: undefined, natureOfComplaint: "", natureOfService: "",
   briefInspection: "", reportNo: "", equipment: "", condSlNo: "", evapSlNo: "",
   compModel: "", compSlNo: "", coolingCondition: "",
@@ -115,7 +125,7 @@ const defaultValues: FormValues = {
   trayHeaterNos: "", trayHeaterAmps: "",
   drainHeaterNos: "", drainHeaterAmps: "",
   serviceRendered: "", materialUsed: "", materialType: "",
-  customerRemarks: "", customerName: "", customerSignature: "",
+  customerRemarks: "", customerName: "", customerMobile: "", customerSignature: "",
   technicianRemarks: "", technicianName: "", technicianMobile: "", technicianSignature: "",
 };
 
@@ -137,8 +147,9 @@ const ServiceReportForm = () => {
     defaultValues: loadSaved(),
   });
 
-  // Persist form data to sessionStorage on every change
   const formValues = watch();
+  const reportType = watch("reportType");
+
   useEffect(() => {
     const timeout = setTimeout(() => {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(formValues));
@@ -159,6 +170,7 @@ const ServiceReportForm = () => {
 
   const onSubmit = (values: FormValues) => {
     const reportData: ReportData = {
+      reportType: values.reportType,
       client: values.client,
       date: values.date ? format(values.date, "dd/MM/yyyy") : "",
       natureOfComplaint: values.natureOfComplaint,
@@ -205,6 +217,7 @@ const ServiceReportForm = () => {
       materialNonChargeable: values.materialType === "nonChargeable",
       customerRemarks: values.customerRemarks,
       customerName: values.customerName,
+      customerMobile: values.customerMobile,
       customerSignatureImg: values.customerSignature,
       technicianRemarks: values.technicianRemarks,
       technicianName: values.technicianName,
@@ -214,12 +227,14 @@ const ServiceReportForm = () => {
     navigate("/report", { state: { reportData } });
   };
 
+  const formTitle = reportType === "service" ? "Service Report" : "Breakdown Service Report";
+
   return (
     <div className="min-h-screen bg-muted/50 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            Breakdown Service Report
+            {formTitle}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Fill in the details below to generate the service report
@@ -227,6 +242,31 @@ const ServiceReportForm = () => {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="space-y-6">
+
+          {/* ── Report Type Selector ── */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Report Type</CardTitle>
+              <CardDescription>Select the type of report to generate.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Controller
+                control={control}
+                name="reportType"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select report type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="breakdown">Breakdown Service Report</SelectItem>
+                      <SelectItem value="service">Service Report</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </CardContent>
+          </Card>
 
           {/* ── General Information ── */}
           <Card>
@@ -607,9 +647,15 @@ const ServiceReportForm = () => {
                 <Label htmlFor="customerRemarks">Customer's Remarks</Label>
                 <Textarea id="customerRemarks" rows={3} placeholder="Customer remarks..." {...register("customerRemarks")} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="customerName">Customer Name</Label>
-                <Input id="customerName" placeholder="Enter name" {...register("customerName")} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerName">Customer Name</Label>
+                  <Input id="customerName" placeholder="Enter name" {...register("customerName")} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerMobile">Mobile No.</Label>
+                  <Input id="customerMobile" placeholder="Enter mobile number" {...register("customerMobile")} />
+                </div>
               </div>
               <Controller
                 control={control}

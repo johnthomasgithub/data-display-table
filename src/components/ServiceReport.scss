@@ -9,7 +9,7 @@
 
 .report-page {
   background: #fff;
-  width: 794px; // A4-ish width
+  width: 794px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
   border: 1px solid #bbb;
 }
@@ -23,22 +23,9 @@
   border-bottom: 2px solid #222;
 
   .logo-area {
-    .logo-placeholder {
-      border: 2px solid #333;
-      border-radius: 6px;
-      padding: 6px 14px;
-      font-size: 22px;
-      font-weight: 900;
-      letter-spacing: 1px;
-      color: #111;
-      display: inline-block;
-      font-style: italic;
-    }
-    .tagline {
-      font-size: 8px;
-      color: #555;
-      margin-top: 2px;
-      letter-spacing: 0.5px;
+    .logo-img {
+      max-height: 70px;
+      width: auto;
     }
   }
 
@@ -115,11 +102,6 @@
     vertical-align: top;
   }
 
-  // No outer border for cells at the edge — the page itself has border
-  &.outer-collapse td:first-child {
-    border-left: none;
-  }
-
   .cell-label {
     font-weight: 600;
     white-space: nowrap;
@@ -138,16 +120,28 @@
     height: 14px;
   }
 
-  // Checkbox style
+  // Checkbox style with tick mark
   .cb {
-    display: inline-block;
-    width: 11px;
-    height: 11px;
-    border: 1px solid #333;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid #333;
     margin-right: 3px;
     vertical-align: middle;
     background: transparent;
     flex-shrink: 0;
+    position: relative;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+
+    .cb-tick {
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1;
+      color: #111;
+    }
   }
 
   .checkbox-group {
@@ -165,7 +159,6 @@
     }
   }
 
-  // tall cells (for text-area style content)
   .cell-tall {
     min-height: 56px;
     height: 56px;
@@ -182,11 +175,17 @@
   }
 
   .cell-sig {
-    min-height: 36px;
-    height: 36px;
+    min-height: 60px;
+    height: auto;
+    padding: 6px 8px;
   }
 
-  // Section-header cells (dark background)
+  .sig-details {
+    margin-top: 4px;
+    font-size: 9.5px;
+    line-height: 1.5;
+  }
+
   .cell-section {
     background: #f5f5f5;
     font-weight: 700;
@@ -203,22 +202,27 @@
   .cell-right {
     text-align: right;
   }
-
-  // Date row
-  .date-row td {
-    border-top: none;
-    border-bottom: 1px solid #666;
-  }
 }
 
-// ── Signature row ─────────────────────────────────────────
-.sig-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 2px 7px 4px;
-  font-size: 10.5px;
+// ── Print styles ─────────────────────────────────────────
+@media print {
+  .report-wrapper {
+    padding: 0;
+    background: #fff;
+  }
 
-  span:last-child {
-    font-weight: 600;
+  .report-page {
+    box-shadow: none;
+    border: none;
+  }
+
+  .cb {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  .cb-tick {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
 }
