@@ -35,27 +35,32 @@ import SignatureCanvas from "@/components/SignatureCanvas";
 import type { ReportData } from "@/components/ServiceReport";
 
 const CLIENT_OPTIONS = [
-  "ABC Industries",
-  "XYZ Corporation",
-  "DEF Enterprises",
-  "GHI Solutions",
+"Castle rock Fisheries Pvt Ltd",
+"SFP Foodstuff Pvt Ltd",
+"Danson Food",
+"MJ Bio Pharma",
+"GCC Clip",
+"Imagicaworld Entertainment"
+"Novotel",
+"Shree Sadhk Storage",
+"Cranberry Foods",
 ];
 
 const COMPLAINT_OPTIONS = [
-  "Not Cooling",
-  "Gas Leakage",
-  "Compressor Failure",
-  "Electrical Issue",
-  "Noise / Vibration",
-  "Water Leakage",
+"Temperature Not maintaining",
+"MCB tripping",
+"HP/LP Tripping",
+"SPPR Alarm",
 ];
 
 const INSPECTION_OPTIONS = [
-  "Routine Check",
-  "Breakdown Call",
-  "Preventive Maintenance",
-  "Installation",
-  "Commissioning",
+"Short of Gas",
+"Gas leakage",
+"MCB Faulty",
+"Wiring Problem",
+"HP/LP Switch Faulty",
+"Conductor Faulty",
+"SPPR Faulty",
 ];
 
 const STORAGE_KEY = "service-report-form-data";
