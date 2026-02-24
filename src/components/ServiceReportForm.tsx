@@ -227,7 +227,7 @@ const ServiceReportForm = () => {
     navigate("/report", { state: { reportData } });
   };
 
-  const formTitle = reportType === "service" ? "Service Report" : "Breakdown Service Report";
+  const formTitle = reportType === "service" ? "Service Report" : "Breakdown Report";
 
   return (
     <div className="min-h-screen bg-muted/50 py-6 px-4 sm:px-6 lg:px-8">
@@ -259,7 +259,7 @@ const ServiceReportForm = () => {
                       <SelectValue placeholder="Select report type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="breakdown">Breakdown Service Report</SelectItem>
+                      <SelectItem value="breakdown">Breakdown Report</SelectItem>
                       <SelectItem value="service">Service Report</SelectItem>
                     </SelectContent>
                   </Select>
