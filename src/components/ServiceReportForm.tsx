@@ -40,7 +40,7 @@ const CLIENT_OPTIONS = [
 "Danson Food",
 "MJ Bio Pharma",
 "GCC Clip",
-"Imagicaworld Entertainment"
+"Imagicaworld Entertainment",
 "Novotel",
 "Shree Sadhk Storage",
 "Cranberry Foods",
