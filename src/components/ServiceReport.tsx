@@ -74,7 +74,7 @@ const CB = ({ checked }: { checked?: boolean }) => (
 );
 
 const ServiceReport = ({ data = {} }: Props) => {
-  const reportTitle = data.reportType === "service" ? "Service Report" : "Breakdown Service Report";
+  const reportTitle = data.reportType === "service" ? "Service Report" : "Breakdown Report";
 
   return (
     <div className="report-wrapper">
