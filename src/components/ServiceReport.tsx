@@ -1,6 +1,8 @@
 import "./ServiceReport.scss";
+import glacetechLogo from "@/assets/glacetech-logo.png";
 
 export interface ReportData {
+  reportType?: "service" | "breakdown";
   date?: string;
   reportNo?: string;
   client?: string;
@@ -53,6 +55,7 @@ export interface ReportData {
   materialNonChargeable?: boolean;
   customerRemarks?: string;
   customerName?: string;
+  customerMobile?: string;
   customerSignatureImg?: string;
   technicianRemarks?: string;
   technicianName?: string;
@@ -65,18 +68,21 @@ interface Props {
 }
 
 const CB = ({ checked }: { checked?: boolean }) => (
-  <span className="cb" style={checked ? { background: "#222" } : undefined} />
+  <span className="cb">
+    {checked && <span className="cb-tick">✓</span>}
+  </span>
 );
 
 const ServiceReport = ({ data = {} }: Props) => {
+  const reportTitle = data.reportType === "service" ? "Service Report" : "Breakdown Service Report";
+
   return (
     <div className="report-wrapper">
       <div className="report-page">
         {/* ── Header ── */}
         <div className="report-header">
           <div className="logo-area">
-            <div className="logo-placeholder">GlaceTech</div>
-            <div className="tagline">FOR EVERLASTING CHILLINESS</div>
+            <img src={glacetechLogo} alt="GlaceTech" className="logo-img" />
           </div>
           <div className="contact-info">
             <div className="contact-title">PLEASE CONTACT US</div>
@@ -91,10 +97,10 @@ const ServiceReport = ({ data = {} }: Props) => {
 
         {/* ── Title Bar ── */}
         <div className="report-title-bar">
-          <div className="title-label">Breakdown Service Report</div>
+          <div className="title-label">{reportTitle}</div>
           <div className="report-no-area">
             <span className="report-no-label">Report No.:</span>
-            <span className="report-no-value">{data.reportNo ?? "810"}</span>
+            <span className="report-no-value">{data.reportNo ?? ""}</span>
           </div>
         </div>
 
@@ -289,11 +295,9 @@ const ServiceReport = ({ data = {} }: Props) => {
               <td>
                 <span className="cell-label">Cut In</span>
               </td>
-
               <td className="cell-center">{data.cutInHp ?? ""}</td>
               <td className="cell-center">{data.cutInLp ?? ""}</td>
               <td className="cell-center">{data.cutInThermostate ?? ""}</td>
-
               <td>
                 <span className="cell-label">Coil Heater</span>
               </td>
@@ -305,11 +309,9 @@ const ServiceReport = ({ data = {} }: Props) => {
               <td>
                 <span className="cell-label">Cut Out</span>
               </td>
-
               <td className="cell-center">{data.cutOutHp ?? ""}</td>
               <td className="cell-center">{data.cutOutLp ?? ""}</td>
               <td className="cell-center">{data.cutOutThermostate ?? ""}</td>
-
               <td>
                 <span className="cell-label">Tray Heater</span>
               </td>
@@ -319,11 +321,9 @@ const ServiceReport = ({ data = {} }: Props) => {
 
             <tr>
               <td />
-
               <td />
               <td />
               <td />
-
               <td>
                 <span className="cell-label">Drain Heater</span>
               </td>
@@ -400,18 +400,24 @@ const ServiceReport = ({ data = {} }: Props) => {
             </tr>
             <tr>
               <td colSpan={4} className="cell-sig">
-                <div className="cell-label">Name</div>
-                <div>{data.customerName ?? ""}</div>
-              </td>
-              <td
-                colSpan={3}
-                className="cell-sig"
-                style={{ textAlign: "right" }}
-              >
                 <div className="cell-label">Signature with Seal</div>
                 {data.customerSignatureImg && (
-                  <img src={data.customerSignatureImg} alt="Customer Signature" style={{ maxHeight: 60, marginLeft: "auto" }} />
+                  <img src={data.customerSignatureImg} alt="Customer Signature" style={{ maxHeight: 60 }} />
                 )}
+                <div className="sig-details">
+                  <div><span className="cell-label">Name:</span> {data.customerName ?? ""}</div>
+                  <div><span className="cell-label">Mob:</span> {data.customerMobile ?? ""}</div>
+                </div>
+              </td>
+              <td colSpan={3} className="cell-sig" style={{ textAlign: "right" }}>
+                <div className="cell-label">Technician's Signature with Mob. No.</div>
+                {data.technicianSignatureImg && (
+                  <img src={data.technicianSignatureImg} alt="Technician Signature" style={{ maxHeight: 60, marginLeft: "auto" }} />
+                )}
+                <div className="sig-details" style={{ textAlign: "right" }}>
+                  <div><span className="cell-label">Name:</span> {data.technicianName ?? ""}</div>
+                  <div><span className="cell-label">Mob:</span> {data.technicianMobile ?? ""}</div>
+                </div>
               </td>
             </tr>
 
@@ -422,25 +428,6 @@ const ServiceReport = ({ data = {} }: Props) => {
                 <div style={{ whiteSpace: "pre-wrap", minHeight: 20 }}>
                   {data.technicianRemarks ?? ""}
                 </div>
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={4} className="cell-sig">
-                <div className="cell-label">Name :</div>
-                <div>{data.technicianName ?? ""}</div>
-              </td>
-              <td
-                colSpan={3}
-                className="cell-sig"
-                style={{ textAlign: "right" }}
-              >
-                <div className="cell-label">Signature with Mob. No.</div>
-                {data.technicianMobile && (
-                  <div style={{ fontSize: 10, marginBottom: 2 }}>Mob: {data.technicianMobile}</div>
-                )}
-                {data.technicianSignatureImg && (
-                  <img src={data.technicianSignatureImg} alt="Technician Signature" style={{ maxHeight: 60, marginLeft: "auto" }} />
-                )}
               </td>
             </tr>
           </tbody>
