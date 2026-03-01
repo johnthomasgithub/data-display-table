@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { FileText, Receipt } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import logo from "@/assets/glacetech-logo.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -8,10 +9,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-muted/50 flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            GlaceTech
-          </h1>
+        <div className="text-center flex flex-col items-center">
+          <img src={logo} alt="GlaceTech" className="h-16 mb-2" />
           <p className="text-muted-foreground mt-1 text-sm">
             Select what you want to create
           </p>
