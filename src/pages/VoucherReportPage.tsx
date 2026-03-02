@@ -43,7 +43,12 @@ const VoucherReportPage = () => {
         <Button variant="outline" onClick={() => navigate("/voucher-form")}>
           ← Back to Form
         </Button>
-        <Button onClick={() => window.print()}>Print / Save PDF</Button>
+        <Button onClick={() => {
+          const prev = document.title;
+          document.title = `Expense_Voucher_${voucherData?.voucherNo || ""}`;
+          window.print();
+          document.title = prev;
+        }}>Print / Save PDF</Button>
         <Button variant="outline" onClick={handleWhatsAppShare} className="flex items-center gap-2">
           <Share2 className="h-4 w-4" /> WhatsApp
         </Button>
