@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { FileText, Receipt } from "lucide-react";
+import { FileText, FolderOpen, Receipt } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import logo from "@/assets/glacetech-logo.png";
 
@@ -42,6 +42,21 @@ const Index = () => {
                 <h2 className="font-semibold text-lg">Voucher</h2>
                 <p className="text-sm text-muted-foreground">
                   Expense Statement Voucher
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-primary"
+            onClick={() => navigate("/saved")}
+          >
+            <CardContent className="flex items-center gap-4 p-6">
+              <FolderOpen className="h-10 w-10 text-primary flex-shrink-0" />
+              <div>
+                <h2 className="font-semibold text-lg">Saved</h2>
+                <p className="text-sm text-muted-foreground">
+                  Find, open, edit and print old reports &amp; vouchers
                 </p>
               </div>
             </CardContent>
