@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { CalendarIcon, Loader2, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,40 +36,18 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import SignatureCanvas from "@/components/SignatureCanvas";
+import {
+  defaultVoucherState,
+  emptyRow,
+  reviveVoucherState,
+  voucherTotals,
+  type ExpenseRow,
+  type VoucherFormState,
+} from "@/lib/voucher";
 
-export interface ExpenseRow {
-  id: string;
-  date: Date | undefined;
-  description: string;
-  client: string;
-  travelExpenses: number;
-  materialExpenses: number;
-}
+const DRAFT_KEY = "expense-voucher-form-data";
 
-export interface VoucherData {
-  voucherType: string;
-  voucherNo: string;
-  voucherDate: string;
-  name: string;
-  rows: {
-    date: string;
-    description: string;
-    client: string;
-    travelExpenses: number;
-    materialExpenses: number;
-    total: number;
-  }[];
-  grandTotal: number;
-  advanceReceived: number;
-  netTotal: number;
-  technicianSignatureImg?: string;
-}
 
-const STORAGE_KEY = "expense-voucher-form-data";
-
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
 
 interface AmountModalProps {
   open: boolean;
@@ -136,38 +114,26 @@ const AmountModal = ({ open, onClose, onSave, title, initialValue }: AmountModal
   );
 };
 
-function loadSaved(): { name: string; voucherNo: string; voucherDate: Date | undefined; rows: ExpenseRow[]; advanceReceived: number; technicianSignature: string } {
+function loadDraft(): VoucherFormState {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return getDefaults();
-    const parsed = JSON.parse(raw);
-    if (parsed.voucherDate) parsed.voucherDate = new Date(parsed.voucherDate);
-    if (parsed.rows) {
-      parsed.rows = parsed.rows.map((r: any) => ({
-        ...r,
-        date: r.date ? new Date(r.date) : undefined,
-      }));
-    }
-    return { ...getDefaults(), ...parsed };
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? reviveVoucherState(JSON.parse(raw)) : defaultVoucherState();
   } catch {
-    return getDefaults();
+    return defaultVoucherState();
   }
 }
 
-function getDefaults() {
-  return {
-    name: "",
-    voucherNo: "",
-    voucherDate: undefined as Date | undefined,
-    rows: [{ id: generateId(), date: undefined, description: "", client: "", travelExpenses: 0, materialExpenses: 0 }] as ExpenseRow[],
-    advanceReceived: 0,
-    technicianSignature: "",
-  };
+interface ExpenseVoucherFormProps {
+  /** State of a saved voucher (edit mode). New vouchers start from the session draft. */
+  initialState?: VoucherFormState;
+  submitLabel: string;
+  onSave: (state: VoucherFormState) => Promise<void>;
 }
 
-const ExpenseVoucherForm = () => {
-  const navigate = useNavigate();
-  const [formState, setFormState] = useState(loadSaved);
+const ExpenseVoucherForm = ({ initialState, submitLabel, onSave }: ExpenseVoucherFormProps) => {
+  const isEdit = !!initialState;
+  const [saving, setSaving] = useState(false);
+  const [formState, setFormState] = useState<VoucherFormState>(() => initialState ?? loadDraft());
   const [amountModal, setAmountModal] = useState<{
     open: boolean;
     rowIndex: number;
@@ -176,18 +142,20 @@ const ExpenseVoucherForm = () => {
     value: number;
   }>({ open: false, rowIndex: -1, field: "travelExpenses", title: "", value: 0 });
 
+  // A new voucher keeps a draft in this browser session until it is saved.
   useEffect(() => {
+    if (isEdit) return;
     const timeout = setTimeout(() => {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(formState));
     }, 300);
     return () => clearTimeout(timeout);
-  }, [formState]);
+  }, [formState, isEdit]);
 
-  const updateField = (field: string, value: any) => {
+  const updateField = (field: keyof VoucherFormState, value: VoucherFormState[keyof VoucherFormState]) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
 
-  const updateRow = (index: number, field: keyof ExpenseRow, value: any) => {
+  const updateRow = (index: number, field: keyof ExpenseRow, value: ExpenseRow[keyof ExpenseRow]) => {
     setFormState((prev) => {
       const rows = [...prev.rows];
       rows[index] = { ...rows[index], [field]: value };
@@ -198,7 +166,7 @@ const ExpenseVoucherForm = () => {
   const addRow = () => {
     setFormState((prev) => ({
       ...prev,
-      rows: [...prev.rows, { id: generateId(), date: undefined, description: "", client: "", travelExpenses: 0, materialExpenses: 0 }],
+      rows: [...prev.rows, emptyRow()],
     }));
   };
 
@@ -209,12 +177,11 @@ const ExpenseVoucherForm = () => {
     }));
   };
 
-  const grandTotal = formState.rows.reduce((sum, r) => sum + r.travelExpenses + r.materialExpenses, 0);
-  const netTotal = grandTotal - formState.advanceReceived;
+  const { grandTotal, netTotal } = voucherTotals(formState);
 
   const handleClear = () => {
-    sessionStorage.removeItem(STORAGE_KEY);
-    setFormState(getDefaults());
+    sessionStorage.removeItem(DRAFT_KEY);
+    setFormState(defaultVoucherState());
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -223,27 +190,19 @@ const ExpenseVoucherForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const voucherData: VoucherData = {
-      voucherType: "Expense Statement",
-      voucherNo: formState.voucherNo,
-      voucherDate: formState.voucherDate ? format(formState.voucherDate, "dd/MM/yyyy") : "",
-      name: formState.name,
-      rows: formState.rows.map((r) => ({
-        date: r.date ? format(r.date, "dd/MM/yyyy") : "",
-        description: r.description,
-        client: r.client,
-        travelExpenses: r.travelExpenses,
-        materialExpenses: r.materialExpenses,
-        total: r.travelExpenses + r.materialExpenses,
-      })),
-      grandTotal,
-      advanceReceived: formState.advanceReceived,
-      netTotal,
-      technicianSignatureImg: formState.technicianSignature,
-    };
-    navigate("/voucher-report", { state: { voucherData } });
+    setSaving(true);
+    try {
+      await onSave(formState);
+      if (!isEdit) sessionStorage.removeItem(DRAFT_KEY);
+    } catch (err) {
+      toast.error("Not saved – please check the internet connection and try again.", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openAmountModal = (rowIndex: number, field: "travelExpenses" | "materialExpenses", title: string) => {
@@ -284,7 +243,7 @@ const ExpenseVoucherForm = () => {
             Expense Statement Voucher
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Fill in the expense details below
+            {isEdit ? "Correct the saved voucher and save your changes" : "Fill in the expense details below"}
           </p>
         </div>
 
@@ -508,12 +467,15 @@ const ExpenseVoucherForm = () => {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button type="submit" className="flex-1" size="lg">
-              Generate Voucher
+            <Button type="submit" className="flex-1" size="lg" disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? "Saving…" : submitLabel}
             </Button>
-            <Button type="button" variant="outline" size="lg" onClick={handleClear} className="flex items-center gap-2">
-              <Trash2 className="h-4 w-4" /> Clear Form
-            </Button>
+            {!isEdit && (
+              <Button type="button" variant="outline" size="lg" onClick={handleClear} className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4" /> Clear Form
+              </Button>
+            )}
           </div>
         </form>
 

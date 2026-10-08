@@ -1,8 +1,8 @@
 import { useForm, Controller } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Trash2 } from "lucide-react";
+import { CalendarIcon, Loader2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,19 +32,12 @@ import {
 } from "@/components/ui/select";
 import SelectWithOther from "@/components/SelectWithOther";
 import SignatureCanvas from "@/components/SignatureCanvas";
-import type { ReportData } from "@/components/ServiceReport";
-
-const CLIENT_OPTIONS = [
-"Castle rock Fisheries Pvt Ltd",
-"SFP Foodstuff Pvt Ltd",
-"Danson Food",
-"MJ Bio Pharma",
-"GCC Clip",
-"Imagicaworld Entertainment",
-"Novotel",
-"Shree Sadhk Storage",
-"Cranberry Foods",
-];
+import { CLIENT_OPTIONS } from "@/data/clients";
+import {
+  defaultServiceValues,
+  reviveServiceValues,
+  type ServiceFormValues,
+} from "@/lib/serviceReport";
 
 const COMPLAINT_OPTIONS = [
 "Temperature Not maintaining",
@@ -63,108 +56,46 @@ const INSPECTION_OPTIONS = [
 "SPPR Faulty",
 ];
 
-const STORAGE_KEY = "service-report-form-data";
-
-interface FormValues {
-  reportType: "service" | "breakdown";
-  client: string;
-  date: Date | undefined;
-  natureOfComplaint: string;
-  natureOfService: string;
-  briefInspection: string;
-  reportNo: string;
-  equipment: string;
-  condSlNo: string;
-  evapSlNo: string;
-  compModel: string;
-  compSlNo: string;
-  coolingCondition: string;
-  voltageRY: string;
-  voltageYB: string;
-  voltageBR: string;
-  rtC: string;
-  sp: string;
-  dp: string;
-  op: string;
-  compA: string;
-  condA: string;
-  evapA: string;
-  cutInHp: string;
-  cutInLp: string;
-  cutInThermostate: string;
-  cutOutHp: string;
-  cutOutLp: string;
-  cutOutThermostate: string;
-  compressorOilLevel: string;
-  liquidIndicatorLevel: string;
-  coilHeaterNos: string;
-  coilHeaterAmps: string;
-  trayHeaterNos: string;
-  trayHeaterAmps: string;
-  drainHeaterNos: string;
-  drainHeaterAmps: string;
-  serviceRendered: string;
-  materialUsed: string;
-  materialType: string;
-  customerRemarks: string;
-  customerName: string;
-  customerMobile: string;
-  customerSignature: string;
-  technicianRemarks: string;
-  technicianName: string;
-  technicianMobile: string;
-  technicianSignature: string;
+interface ServiceReportFormProps {
+  /** Values of a saved report (edit mode). New reports start from the session draft. */
+  initialValues?: ServiceFormValues;
+  submitLabel: string;
+  onSave: (values: ServiceFormValues) => Promise<void>;
 }
 
-const defaultValues: FormValues = {
-  reportType: "breakdown",
-  client: "", date: undefined, natureOfComplaint: "", natureOfService: "",
-  briefInspection: "", reportNo: "", equipment: "", condSlNo: "", evapSlNo: "",
-  compModel: "", compSlNo: "", coolingCondition: "",
-  voltageRY: "", voltageYB: "", voltageBR: "",
-  rtC: "", sp: "", dp: "", op: "", compA: "", condA: "", evapA: "",
-  cutInHp: "", cutInLp: "", cutInThermostate: "",
-  cutOutHp: "", cutOutLp: "", cutOutThermostate: "",
-  compressorOilLevel: "", liquidIndicatorLevel: "",
-  coilHeaterNos: "", coilHeaterAmps: "",
-  trayHeaterNos: "", trayHeaterAmps: "",
-  drainHeaterNos: "", drainHeaterAmps: "",
-  serviceRendered: "", materialUsed: "", materialType: "",
-  customerRemarks: "", customerName: "", customerMobile: "", customerSignature: "",
-  technicianRemarks: "", technicianName: "", technicianMobile: "", technicianSignature: "",
-};
+const DRAFT_KEY = "service-report-form-data";
 
-function loadSaved(): FormValues {
+function loadDraft(): ServiceFormValues {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultValues;
-    const parsed = JSON.parse(raw);
-    if (parsed.date) parsed.date = new Date(parsed.date);
-    return { ...defaultValues, ...parsed };
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? reviveServiceValues(JSON.parse(raw)) : defaultServiceValues;
   } catch {
-    return defaultValues;
+    return defaultServiceValues;
   }
 }
 
-const ServiceReportForm = () => {
-  const navigate = useNavigate();
-  const { control, register, handleSubmit, watch, reset } = useForm<FormValues>({
-    defaultValues: loadSaved(),
+const ServiceReportForm = ({ initialValues, submitLabel, onSave }: ServiceReportFormProps) => {
+  const isEdit = !!initialValues;
+  const [saving, setSaving] = useState(false);
+  const { control, register, handleSubmit, watch, reset } = useForm<ServiceFormValues>({
+    defaultValues: initialValues ?? loadDraft(),
   });
 
   const formValues = watch();
   const reportType = watch("reportType");
 
+  // A new report keeps a draft in this browser session until it is saved.
   useEffect(() => {
+    if (isEdit) return;
     const timeout = setTimeout(() => {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(formValues));
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(formValues));
     }, 300);
     return () => clearTimeout(timeout);
-  }, [formValues]);
+  }, [formValues, isEdit]);
 
   const handleClearForm = () => {
-    sessionStorage.removeItem(STORAGE_KEY);
-    reset(defaultValues);
+    sessionStorage.removeItem(DRAFT_KEY);
+    reset(defaultServiceValues);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -173,63 +104,18 @@ const ServiceReportForm = () => {
     }
   };
 
-  const onSubmit = (values: FormValues) => {
-    const reportData: ReportData = {
-      reportType: values.reportType,
-      client: values.client,
-      date: values.date ? format(values.date, "dd/MM/yyyy") : "",
-      natureOfComplaint: values.natureOfComplaint,
-      warranty: values.natureOfService === "warranty",
-      amc: values.natureOfService === "amc",
-      chargeable: values.natureOfService === "chargeable",
-      briefInspection: values.briefInspection,
-      reportNo: values.reportNo,
-      equipmentCR: values.equipment === "CR",
-      equipmentCB: values.equipment === "CB",
-      condSlNo: values.condSlNo,
-      evapSlNo: values.evapSlNo,
-      compModel: values.compModel,
-      compSlNo: values.compSlNo,
-      airCooledCond: values.coolingCondition === "air",
-      waterCooledCond: values.coolingCondition === "water",
-      voltageRY: values.voltageRY,
-      voltageYB: values.voltageYB,
-      voltageBR: values.voltageBR,
-      rtC: values.rtC,
-      sp: values.sp,
-      dp: values.dp,
-      op: values.op,
-      compA: values.compA,
-      condA: values.condA,
-      evapA: values.evapA,
-      cutInHp: values.cutInHp,
-      cutInLp: values.cutInLp,
-      cutInThermostate: values.cutInThermostate,
-      cutOutHp: values.cutOutHp,
-      cutOutLp: values.cutOutLp,
-      cutOutThermostate: values.cutOutThermostate,
-      compressorOilLevel: values.compressorOilLevel,
-      liquidIndicatorLevel: values.liquidIndicatorLevel,
-      coilHeaterNos: values.coilHeaterNos,
-      coilHeaterAmps: values.coilHeaterAmps,
-      trayHeaterNos: values.trayHeaterNos,
-      trayHeaterAmps: values.trayHeaterAmps,
-      drainHeaterNos: values.drainHeaterNos,
-      drainHeaterAmps: values.drainHeaterAmps,
-      serviceRendered: values.serviceRendered,
-      materialUsed: values.materialUsed,
-      materialChargeable: values.materialType === "chargeable",
-      materialNonChargeable: values.materialType === "nonChargeable",
-      customerRemarks: values.customerRemarks,
-      customerName: values.customerName,
-      customerMobile: values.customerMobile,
-      customerSignatureImg: values.customerSignature,
-      technicianRemarks: values.technicianRemarks,
-      technicianName: values.technicianName,
-      technicianMobile: values.technicianMobile,
-      technicianSignatureImg: values.technicianSignature,
-    };
-    navigate("/report", { state: { reportData } });
+  const onSubmit = async (values: ServiceFormValues) => {
+    setSaving(true);
+    try {
+      await onSave(values);
+      if (!isEdit) sessionStorage.removeItem(DRAFT_KEY);
+    } catch (err) {
+      toast.error("Not saved – please check the internet connection and try again.", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formTitle = reportType === "service" ? "Service Report" : "Breakdown Report";
@@ -242,7 +128,7 @@ const ServiceReportForm = () => {
             {formTitle}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Fill in the details below to generate the service report
+            {isEdit ? "Correct the saved report and save your changes" : "Fill in the details below to generate the service report"}
           </p>
         </div>
 
@@ -482,7 +368,7 @@ const ServiceReportForm = () => {
                   ].map((f) => (
                     <div key={f.id} className="space-y-1">
                       <Label htmlFor={f.id} className="text-xs">{f.label}</Label>
-                      <Input id={f.id} {...register(f.id as keyof FormValues)} />
+                      <Input id={f.id} {...register(f.id as keyof ServiceFormValues)} />
                     </div>
                   ))}
                 </div>
@@ -497,7 +383,7 @@ const ServiceReportForm = () => {
                   ].map((f) => (
                     <div key={f.id} className="space-y-1">
                       <Label htmlFor={f.id} className="text-xs">{f.label}</Label>
-                      <Input id={f.id} {...register(f.id as keyof FormValues)} />
+                      <Input id={f.id} {...register(f.id as keyof ServiceFormValues)} />
                     </div>
                   ))}
                 </div>
@@ -584,11 +470,11 @@ const ServiceReportForm = () => {
                   <div className="grid grid-cols-2 gap-3 mt-2">
                     <div className="space-y-1">
                       <Label htmlFor={heater.nos} className="text-xs">Nos</Label>
-                      <Input id={heater.nos} {...register(heater.nos as keyof FormValues)} />
+                      <Input id={heater.nos} {...register(heater.nos as keyof ServiceFormValues)} />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor={heater.amps} className="text-xs">Amps</Label>
-                      <Input id={heater.amps} {...register(heater.amps as keyof FormValues)} />
+                      <Input id={heater.amps} {...register(heater.amps as keyof ServiceFormValues)} />
                     </div>
                   </div>
                 </div>
@@ -704,12 +590,15 @@ const ServiceReportForm = () => {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button type="submit" className="flex-1" size="lg">
-              Generate Report
+            <Button type="submit" className="flex-1" size="lg" disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? "Saving…" : submitLabel}
             </Button>
-            <Button type="button" variant="outline" size="lg" onClick={handleClearForm} className="flex items-center gap-2">
-              <Trash2 className="h-4 w-4" /> Clear Form
-            </Button>
+            {!isEdit && (
+              <Button type="button" variant="outline" size="lg" onClick={handleClearForm} className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4" /> Clear Form
+              </Button>
+            )}
           </div>
         </form>
       </div>

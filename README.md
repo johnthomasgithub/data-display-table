@@ -1,73 +1,59 @@
-# Welcome to your Lovable project
+# GlaceTech Reports
 
-## Project info
+Digital GlaceTech forms: **Service / Breakdown Report** and **Expense Statement Voucher**.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Fill a form, sign on screen and **Save & Generate**. Every report or voucher is saved to the cloud (Supabase), and can later be found, opened, edited, printed or saved as a PDF, and shared on WhatsApp or by email.
 
-## How can I edit this code?
+There is **no login**: anyone with the app link can use it, so share the link only with the team.
 
-There are several ways of editing your application.
+Stack: Vite + React + TypeScript + Tailwind + shadcn/ui, Supabase (database and signature storage), hosted on Netlify.
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Run locally
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+cp .env.example .env   # add the Supabase keys (see below)
+npm run dev            # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+Without Supabase keys the app runs in **local mode**. Records are saved in this browser only, and a yellow banner says so.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Supabase setup (one time)
 
-**Use GitHub Codespaces**
+1. Create a free project at [supabase.com](https://supabase.com) with the client's account. Pick the **Mumbai (ap-south-1)** region and keep **Data API** enabled.
+2. Open **SQL Editor → New query**, paste all of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. This creates:
+   - the `records` table,
+   - access rules (create, read and edit allowed; delete is not possible from the app),
+   - a private `signatures` bucket.
+3. Open **Project Settings → API** and copy the **Project URL** and the **anon public** (or **Publishable**) key into `.env`:
+   ```
+   VITE_SUPABASE_URL=https://xxxx.supabase.co
+   VITE_SUPABASE_ANON_KEY=...
+   ```
+4. Restart `npm run dev`. The yellow banner disappears.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Netlify
 
-## What technologies are used for this project?
+Add the same two variables under **Site configuration → Environment variables**, then redeploy. Build settings and single-page-app routing are in [`netlify.toml`](netlify.toml).
 
-This project is built with:
+## How it works
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+| Screen | Route |
+|---|---|
+| Home | `/` |
+| New Service / Breakdown Report | `/report-form` |
+| New Expense Voucher | `/voucher-form` |
+| Saved list with filters | `/saved` |
+| View, print, share | `/saved/:id` |
+| Edit | `/saved/:id/edit` |
 
-## How can I deploy this project?
+- **Saved list filters:** client name, Report No. / Voucher No., type (Service, Breakdown, Voucher), and from/to date. Filters are kept in the page address, so **Back** from a record returns to the same list.
+- **Storage:** each record is one row in `records`. `ref_no`, `client`, `person`, `record_type` and `record_date` are searchable columns. All form values are stored in `data` (JSON), so a record opens again in the same form for editing.
+- **Signatures:** uploaded as PNGs to the private `signatures` bucket (`<record id>/<field>-<time>.png`) and shown through short-lived signed links.
+- **PDFs:** not stored. They are rebuilt from the data when **Print / Save PDF** is pressed.
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Exporting data
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- **Excel/CSV:** Supabase → Table Editor → `records` → Export.
+- **Full backup:** `pg_dump "<connection string>" --schema=public -Fc -f glacetech-backup.dump`
+- **Signatures:** Supabase → Storage → `signatures`.

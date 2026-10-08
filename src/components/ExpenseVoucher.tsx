@@ -1,6 +1,6 @@
 import "./ExpenseVoucher.scss";
 import glacetechLogo from "@/assets/glacetech-logo.png";
-import type { VoucherData } from "./ExpenseVoucherForm";
+import type { VoucherData } from "@/lib/voucher";
 
 interface Props {
   data?: VoucherData;
