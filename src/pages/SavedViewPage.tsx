@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Mail, Pencil, Printer, Share2 } from "lucide-react";
@@ -7,39 +7,30 @@ import { Button } from "@/components/ui/button";
 import PageBar from "@/components/PageBar";
 import ServiceReport from "@/components/ServiceReport";
 import ExpenseVoucher from "@/components/ExpenseVoucher";
-import { LAST_LIST_KEY, RECORD_TYPE_LABEL, getRecord, signatureSrc, type SavedRecord } from "@/lib/records";
+import { LAST_LIST_KEY, RECORD_TYPE_LABEL, type SavedRecord } from "@/lib/records";
+import { useApi } from "@/lib/auth";
 import { reviveServiceValues, toReportData } from "@/lib/serviceReport";
 import { reviveVoucherState, toVoucherData } from "@/lib/voucher";
 import { reportShareLines, shareByEmail, shareOnWhatsApp, voucherShareLines } from "@/lib/share";
 
-/** Builds the printable data, with stored signature paths turned into viewable links. */
-async function printable(record: SavedRecord) {
+/** Builds the printable data from the saved form values. */
+function printable(record: SavedRecord) {
   if (record.record_type === "voucher") {
-    const data = toVoucherData(reviveVoucherState(record.data));
-    data.technicianSignatureImg = await signatureSrc(data.technicianSignatureImg);
-    return { kind: "voucher" as const, data };
+    return { kind: "voucher" as const, data: toVoucherData(reviveVoucherState(record.data)) };
   }
-  const data = toReportData(reviveServiceValues(record.data));
-  data.customerSignatureImg = await signatureSrc(data.customerSignatureImg);
-  data.technicianSignatureImg = await signatureSrc(data.technicianSignatureImg);
-  return { kind: "report" as const, data };
+  return { kind: "report" as const, data: toReportData(reviveServiceValues(record.data)) };
 }
-
-type Printable = Awaited<ReturnType<typeof printable>>;
 
 const SavedViewPage = () => {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { data: record, isLoading, error } = useQuery({ queryKey: ["record", id], queryFn: () => getRecord(id) });
-  const [view, setView] = useState<Printable | null>(null);
-
-  useEffect(() => {
-    if (record) printable(record).then(setView);
-  }, [record]);
+  const api = useApi();
+  const { data: record, isLoading, error } = useQuery({ queryKey: ["record", id], queryFn: () => api.getRecord(id) });
+  const view = useMemo(() => (record ? printable(record) : null), [record]);
 
   const listFallback = `/saved?${sessionStorage.getItem(LAST_LIST_KEY) ?? ""}`;
 
-  if (isLoading || (record && !view)) {
+  if (isLoading) {
     return (
       <>
         <PageBar title="Loading…" fallback={listFallback} />

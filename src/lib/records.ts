@@ -1,7 +1,12 @@
-import { supabase, SIGNATURE_BUCKET } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
+
+// All data goes through checked database functions (see supabase/schema.sql),
+// called with the session token from the PIN login. The database decides what
+// each employee may see: technicians their own records, admins everyone's.
 
 export type RecordType = "service" | "breakdown" | "voucher";
 export type RecordData = Record<string, unknown>;
+export type Role = "technician" | "admin";
 
 export const RECORD_TYPE_LABEL: Record<RecordType, string> = {
   service: "Service Report",
@@ -9,23 +14,42 @@ export const RECORD_TYPE_LABEL: Record<RecordType, string> = {
   voucher: "Expense Voucher",
 };
 
-export interface SavedRecord {
+export interface Employee {
+  id: string;
+  code: string | null;
+  name: string;
+  role: Role;
+}
+
+export interface Session {
+  token: string;
+  expiresAt: string; // ISO time
+  employee: Employee;
+}
+
+export type LoginResult = { ok: true; session: Session } | { ok: false; error: "INVALID_PIN" | "TOO_MANY_ATTEMPTS" };
+
+/** List row (no form data). */
+export interface RecordSummaryRow {
   id: string;
   record_type: RecordType;
   ref_no: string | null;
   client: string | null;
-  person: string | null;
+  owner_id: string;
+  owner_name: string;
   record_date: string | null;
-  data: RecordData;
   created_at: string;
   updated_at: string;
+}
+
+export interface SavedRecord extends RecordSummaryRow {
+  data: RecordData;
 }
 
 /** Values copied into the searchable columns. */
 export interface RecordSummary {
   refNo: string;
   client: string;
-  person: string;
   date: string; // yyyy-MM-dd or ""
 }
 
@@ -38,187 +62,154 @@ export interface ListFilter {
   /** yyyy-MM-dd, inclusive */
   dateFrom?: string;
   dateTo?: string;
+  /** Admins only: one technician's records. */
+  ownerId?: string;
 }
 
 /** sessionStorage key holding the saved-list filters (URL query string). */
 export const LAST_LIST_KEY = "glacetech-last-list-filters";
 
-const isDataUrl = (v: unknown): boolean => typeof v === "string" && v.startsWith("data:");
-
-// ── Signatures ─────────────────────────────────────────────────────────────
-// In the form, a signature is a PNG data URL. On save it is uploaded to the
-// private "signatures" bucket and the record keeps only the file path.
-
-async function uploadSignatures(id: string, data: RecordData, fields: string[]): Promise<RecordData> {
-  if (!supabase) return data;
-  const out = { ...data };
-  for (const field of fields) {
-    const value = out[field];
-    if (typeof value !== "string" || !isDataUrl(value)) continue;
-    const blob = await (await fetch(value)).blob();
-    const path = `${id}/${field}-${Date.now()}.png`;
-    const { error } = await supabase.storage
-      .from(SIGNATURE_BUCKET)
-      .upload(path, blob, { contentType: "image/png", upsert: true });
-    if (error) throw new Error(`Could not upload signature: ${error.message}`);
-    out[field] = path;
+/** The session has ended (24 hours passed, or logged out elsewhere). */
+export class SessionExpiredError extends Error {
+  constructor() {
+    super("Session expired. Please enter your PIN again.");
   }
-  return out;
 }
 
-/** Turns a stored signature value into something an <img> can show. */
-export async function signatureSrc(value: unknown): Promise<string> {
-  if (typeof value !== "string" || !value) return "";
-  if (isDataUrl(value) || value.startsWith("http")) return value;
-  if (!supabase) return "";
-  const { data, error } = await supabase.storage.from(SIGNATURE_BUCKET).createSignedUrl(value, 60 * 60);
-  if (error) return "";
-  return data.signedUrl;
+// ── Backend selection ─────────────────────────────────────────────────────
+// Without Supabase keys, development builds use an in-browser demo backend.
+// Production builds never include it (the import is removed at build time).
+
+type LocalBackend = typeof import("./localBackend");
+
+function localBackend(): Promise<LocalBackend> {
+  return import.meta.env.DEV
+    ? import("./localBackend")
+    : Promise.reject(new Error("The app is not connected to Supabase. Add the keys and redeploy."));
 }
 
-// ── Local fallback (no Supabase keys) ─────────────────────────────────────
+function toError(message: string): Error {
+  if (message.includes("SESSION_EXPIRED")) return new SessionExpiredError();
+  if (message.includes("NOT_FOUND")) return new Error("Not found, or you do not have access to it.");
+  if (message.includes("Could not find the function")) {
+    return new Error("The database is not set up for PIN login yet. Run supabase/schema.sql in Supabase.");
+  }
+  return new Error(message);
+}
 
-const LOCAL_KEY = "glacetech-records";
-
-function readLocal(): SavedRecord[] {
+/** Runs a demo-backend call with the same error handling as Supabase. */
+async function viaLocal<T>(fn: (backend: LocalBackend) => T): Promise<T> {
+  const backend = await localBackend();
   try {
-    return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
-  } catch {
-    return [];
+    return fn(backend);
+  } catch (err) {
+    throw toError(err instanceof Error ? err.message : String(err));
   }
 }
 
-function writeLocal(records: SavedRecord[]) {
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(records));
+async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase!.rpc(fn, args);
+  if (error) throw toError(error.message);
+  return data as T;
 }
 
-function matches(r: SavedRecord, filter: ListFilter) {
-  const has = (value: string | null, q?: string) =>
-    !q?.trim() || !!value?.toLowerCase().includes(q.trim().toLowerCase());
-  if (filter.recordType && filter.recordType !== "all" && r.record_type !== filter.recordType) return false;
-  if (!has(r.client, filter.client)) return false;
-  if (!has(r.ref_no, filter.number)) return false;
-  if (filter.dateFrom && (!r.record_date || r.record_date < filter.dateFrom)) return false;
-  if (filter.dateTo && (!r.record_date || r.record_date > filter.dateTo)) return false;
-  return true;
+// ── API ────────────────────────────────────────────────────────────────────
+
+interface LoginResponse {
+  ok: boolean;
+  error?: "INVALID_PIN" | "TOO_MANY_ATTEMPTS";
+  token?: string;
+  expires_at?: string;
+  employee?: Employee;
 }
 
-// ── Public API ─────────────────────────────────────────────────────────────
-
-const today = () => new Date().toISOString().slice(0, 10);
-
-/** Searchable columns. The date falls back so every record can be found by date. */
-const toColumns = (type: RecordType, summary: RecordSummary, fallbackDate: string) => ({
-  record_type: type,
-  ref_no: summary.refNo || null,
-  client: summary.client || null,
-  person: summary.person || null,
-  record_date: summary.date || fallbackDate,
-});
-
-/** Strips characters that have a meaning inside a PostgREST filter. */
-const clean = (value?: string) => value?.trim().replace(/[%,()*]/g, " ").trim() ?? "";
-
-export async function listRecords(filter: ListFilter = {}): Promise<SavedRecord[]> {
-  if (!supabase) {
-    return readLocal()
-      .filter((r) => matches(r, filter))
-      .sort(
-        (a, b) => (b.record_date ?? "").localeCompare(a.record_date ?? "") || b.created_at.localeCompare(a.created_at),
-      );
+export async function login(pin: string): Promise<LoginResult> {
+  const res = supabase ? await rpc<LoginResponse>("login", { p_pin: pin }) : await viaLocal((b) => b.login(pin));
+  if (!res.ok || !res.token || !res.expires_at || !res.employee) {
+    return { ok: false, error: res.error ?? "INVALID_PIN" };
   }
-
-  let query = supabase
-    .from("records")
-    .select("*")
-    .order("record_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(200);
-  if (filter.recordType && filter.recordType !== "all") query = query.eq("record_type", filter.recordType);
-  const client = clean(filter.client);
-  if (client) query = query.ilike("client", `%${client}%`);
-  const number = clean(filter.number);
-  if (number) query = query.ilike("ref_no", `%${number}%`);
-  if (filter.dateFrom) query = query.gte("record_date", filter.dateFrom);
-  if (filter.dateTo) query = query.lte("record_date", filter.dateTo);
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return data as SavedRecord[];
+  return { ok: true, session: { token: res.token, expiresAt: res.expires_at, employee: res.employee } };
 }
 
-export async function getRecord(id: string): Promise<SavedRecord> {
-  if (!supabase) {
-    const found = readLocal().find((r) => r.id === id);
-    if (!found) throw new Error("Record not found");
-    return found;
+/** Confirms a stored session is still valid; returns it refreshed, or null. */
+export async function checkSession(session: Session): Promise<Session | null> {
+  try {
+    const res = supabase
+      ? await rpc<{ expires_at: string; employee: Employee }>("whoami", { p_token: session.token })
+      : await viaLocal((b) => b.whoami(session.token));
+    return { token: session.token, expiresAt: res.expires_at, employee: res.employee };
+  } catch (err) {
+    if (err instanceof SessionExpiredError) return null;
+    throw err;
   }
-  const { data, error } = await supabase.from("records").select("*").eq("id", id).single();
-  if (error) throw new Error(error.message);
-  return data as SavedRecord;
+}
+
+export async function logout(token: string): Promise<void> {
+  if (supabase) await rpc("logout", { p_token: token });
+  else await viaLocal((b) => b.logout(token));
+}
+
+export async function listRecords(token: string, filter: ListFilter = {}): Promise<RecordSummaryRow[]> {
+  const args = {
+    p_token: token,
+    p_client: filter.client?.trim() || null,
+    p_number: filter.number?.trim() || null,
+    p_type: filter.recordType && filter.recordType !== "all" ? filter.recordType : null,
+    p_from: filter.dateFrom || null,
+    p_to: filter.dateTo || null,
+    p_owner: filter.ownerId || null,
+  };
+  return supabase ? rpc("list_records", args) : viaLocal((b) => b.listRecords(args));
+}
+
+export async function getRecord(token: string, id: string): Promise<SavedRecord> {
+  if (!supabase) return viaLocal((b) => b.getRecord(token, id));
+  const rows = await rpc<SavedRecord[]>("get_record", { p_token: token, p_id: id });
+  if (!rows[0]) throw toError("NOT_FOUND");
+  return rows[0];
 }
 
 export async function createRecord(
+  token: string,
   type: RecordType,
-  formData: RecordData,
+  data: RecordData,
   summary: RecordSummary,
-  signatureFields: string[],
 ): Promise<SavedRecord> {
-  const id = crypto.randomUUID();
-
-  if (!supabase) {
-    const now = new Date().toISOString();
-    const record: SavedRecord = {
-      id,
-      ...toColumns(type, summary, today()),
-      data: formData,
-      created_at: now,
-      updated_at: now,
-    };
-    writeLocal([record, ...readLocal()]);
-    return record;
-  }
-
-  const data = await uploadSignatures(id, formData, signatureFields);
-  const { data: row, error } = await supabase
-    .from("records")
-    .insert({ id, ...toColumns(type, summary, today()), data })
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return row as SavedRecord;
+  const args = {
+    p_token: token,
+    p_type: type,
+    p_ref_no: summary.refNo,
+    p_client: summary.client,
+    p_date: summary.date || null,
+    p_data: JSON.parse(JSON.stringify(data)), // Dates → ISO text
+  };
+  if (!supabase) return viaLocal((b) => b.createRecord(args));
+  const rows = await rpc<SavedRecord[]>("create_record", args);
+  return rows[0];
 }
 
 export async function updateRecord(
+  token: string,
   id: string,
   type: RecordType,
-  formData: RecordData,
+  data: RecordData,
   summary: RecordSummary,
-  signatureFields: string[],
 ): Promise<SavedRecord> {
-  if (!supabase) {
-    const records = readLocal();
-    const index = records.findIndex((r) => r.id === id);
-    if (index === -1) throw new Error("Record not found");
-    records[index] = {
-      ...records[index],
-      ...toColumns(type, summary, records[index].created_at.slice(0, 10)),
-      data: formData,
-      updated_at: new Date().toISOString(),
-    };
-    writeLocal(records);
-    return records[index];
-  }
+  const args = {
+    p_token: token,
+    p_id: id,
+    p_type: type,
+    p_ref_no: summary.refNo,
+    p_client: summary.client,
+    p_date: summary.date || null,
+    p_data: JSON.parse(JSON.stringify(data)),
+  };
+  if (!supabase) return viaLocal((b) => b.updateRecord(args));
+  const rows = await rpc<SavedRecord[]>("update_record", args);
+  return rows[0];
+}
 
-  const data = await uploadSignatures(id, formData, signatureFields);
-  const columns = toColumns(type, summary, "");
-  const { data: row, error } = await supabase
-    .from("records")
-    // An empty date keeps whatever date the record already has.
-    .update({ ...columns, record_date: columns.record_date || undefined, data })
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return row as SavedRecord;
+/** Admins only. */
+export async function listEmployees(token: string): Promise<Employee[]> {
+  return supabase ? rpc("list_employees", { p_token: token }) : viaLocal((b) => b.listEmployees(token));
 }

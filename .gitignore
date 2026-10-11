@@ -25,3 +25,7 @@ dist-ssr
 
 # Local env (Supabase keys)
 .env.local
+
+# Employee PIN files must never be committed
+*employee-seed*.sql
+*employee-pins*

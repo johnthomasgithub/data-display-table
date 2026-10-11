@@ -41,8 +41,6 @@ export interface VoucherFormState {
   technicianSignature: string;
 }
 
-export const VOUCHER_SIGNATURE_FIELDS = ["technicianSignature"];
-
 export function generateId() {
   return Math.random().toString(36).substr(2, 9);
 }
@@ -87,7 +85,6 @@ export function voucherSummary(state: VoucherFormState): RecordSummary {
   return {
     refNo: state.voucherNo,
     client: clients.join(", "),
-    person: state.name,
     date: state.voucherDate ? format(state.voucherDate, "yyyy-MM-dd") : "",
   };
 }

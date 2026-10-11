@@ -114,10 +114,10 @@ const AmountModal = ({ open, onClose, onSave, title, initialValue }: AmountModal
   );
 };
 
-function loadDraft(): VoucherFormState {
+function loadDraft(ownerId?: string): VoucherFormState {
   try {
-    const raw = sessionStorage.getItem(DRAFT_KEY);
-    return raw ? reviveVoucherState(JSON.parse(raw)) : defaultVoucherState();
+    const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null");
+    return draft && draft.ownerId === ownerId ? reviveVoucherState(draft.state) : defaultVoucherState();
   } catch {
     return defaultVoucherState();
   }
@@ -126,14 +126,21 @@ function loadDraft(): VoucherFormState {
 interface ExpenseVoucherFormProps {
   /** State of a saved voucher (edit mode). New vouchers start from the session draft. */
   initialState?: VoucherFormState;
+  /** Fixed name: the logged-in employee, or the saved voucher's owner. */
+  employeeName: string;
+  /** Logged-in employee; a draft is only restored for the same person. */
+  draftOwnerId?: string;
   submitLabel: string;
   onSave: (state: VoucherFormState) => Promise<void>;
 }
 
-const ExpenseVoucherForm = ({ initialState, submitLabel, onSave }: ExpenseVoucherFormProps) => {
+const ExpenseVoucherForm = ({ initialState, employeeName, draftOwnerId, submitLabel, onSave }: ExpenseVoucherFormProps) => {
   const isEdit = !!initialState;
   const [saving, setSaving] = useState(false);
-  const [formState, setFormState] = useState<VoucherFormState>(() => initialState ?? loadDraft());
+  const [formState, setFormState] = useState<VoucherFormState>(() => ({
+    ...(initialState ?? loadDraft(draftOwnerId)),
+    name: employeeName,
+  }));
   const [amountModal, setAmountModal] = useState<{
     open: boolean;
     rowIndex: number;
@@ -146,10 +153,10 @@ const ExpenseVoucherForm = ({ initialState, submitLabel, onSave }: ExpenseVouche
   useEffect(() => {
     if (isEdit) return;
     const timeout = setTimeout(() => {
-      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(formState));
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ ownerId: draftOwnerId, state: formState }));
     }, 300);
     return () => clearTimeout(timeout);
-  }, [formState, isEdit]);
+  }, [formState, isEdit, draftOwnerId]);
 
   const updateField = (field: keyof VoucherFormState, value: VoucherFormState[keyof VoucherFormState]) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
@@ -181,7 +188,7 @@ const ExpenseVoucherForm = ({ initialState, submitLabel, onSave }: ExpenseVouche
 
   const handleClear = () => {
     sessionStorage.removeItem(DRAFT_KEY);
-    setFormState(defaultVoucherState());
+    setFormState({ ...defaultVoucherState(), name: employeeName });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -311,8 +318,9 @@ const ExpenseVoucherForm = ({ initialState, submitLabel, onSave }: ExpenseVouche
                 <Label>Name</Label>
                 <Input
                   value={formState.name}
-                  onChange={(e) => updateField("name", e.target.value)}
-                  placeholder="Technician / Employee name"
+                  readOnly
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                  title="Set from the PIN login"
                 />
               </div>
             </CardContent>

@@ -59,26 +59,30 @@ const INSPECTION_OPTIONS = [
 interface ServiceReportFormProps {
   /** Values of a saved report (edit mode). New reports start from the session draft. */
   initialValues?: ServiceFormValues;
+  /** Fixed technician name: the logged-in employee, or the saved report's owner. */
+  technicianName: string;
+  /** Logged-in employee; a draft is only restored for the same person. */
+  draftOwnerId?: string;
   submitLabel: string;
   onSave: (values: ServiceFormValues) => Promise<void>;
 }
 
 const DRAFT_KEY = "service-report-form-data";
 
-function loadDraft(): ServiceFormValues {
+function loadDraft(ownerId?: string): ServiceFormValues {
   try {
-    const raw = sessionStorage.getItem(DRAFT_KEY);
-    return raw ? reviveServiceValues(JSON.parse(raw)) : defaultServiceValues;
+    const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null");
+    return draft && draft.ownerId === ownerId ? reviveServiceValues(draft.values) : defaultServiceValues;
   } catch {
     return defaultServiceValues;
   }
 }
 
-const ServiceReportForm = ({ initialValues, submitLabel, onSave }: ServiceReportFormProps) => {
+const ServiceReportForm = ({ initialValues, technicianName, draftOwnerId, submitLabel, onSave }: ServiceReportFormProps) => {
   const isEdit = !!initialValues;
   const [saving, setSaving] = useState(false);
   const { control, register, handleSubmit, watch, reset } = useForm<ServiceFormValues>({
-    defaultValues: initialValues ?? loadDraft(),
+    defaultValues: { ...(initialValues ?? loadDraft(draftOwnerId)), technicianName },
   });
 
   const formValues = watch();
@@ -88,14 +92,14 @@ const ServiceReportForm = ({ initialValues, submitLabel, onSave }: ServiceReport
   useEffect(() => {
     if (isEdit) return;
     const timeout = setTimeout(() => {
-      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(formValues));
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ ownerId: draftOwnerId, values: formValues }));
     }, 300);
     return () => clearTimeout(timeout);
-  }, [formValues, isEdit]);
+  }, [formValues, isEdit, draftOwnerId]);
 
   const handleClearForm = () => {
     sessionStorage.removeItem(DRAFT_KEY);
-    reset(defaultServiceValues);
+    reset({ ...defaultServiceValues, technicianName });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -571,7 +575,13 @@ const ServiceReportForm = ({ initialValues, submitLabel, onSave }: ServiceReport
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="technicianName">Technician Name</Label>
-                  <Input id="technicianName" placeholder="Enter name" {...register("technicianName")} />
+                  <Input
+                    id="technicianName"
+                    readOnly
+                    className="bg-muted text-muted-foreground cursor-not-allowed"
+                    title="Set from the PIN login"
+                    {...register("technicianName")}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="technicianMobile">Mobile No.</Label>

@@ -6,22 +6,23 @@ import { toast } from "sonner";
 import PageBar from "@/components/PageBar";
 import ServiceReportForm from "@/components/ServiceReportForm";
 import ExpenseVoucherForm from "@/components/ExpenseVoucherForm";
-import { getRecord, updateRecord, type RecordData } from "@/lib/records";
+import { useApi } from "@/lib/auth";
+import type { RecordData } from "@/lib/records";
 import {
-  SERVICE_SIGNATURE_FIELDS,
   reviveServiceValues,
   serviceRecordType,
   serviceSummary,
   type ServiceFormValues,
 } from "@/lib/serviceReport";
-import { VOUCHER_SIGNATURE_FIELDS, reviveVoucherState, voucherSummary, type VoucherFormState } from "@/lib/voucher";
+import { reviveVoucherState, voucherSummary, type VoucherFormState } from "@/lib/voucher";
 
 const SavedEditPage = () => {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { data: record, isLoading, error } = useQuery({ queryKey: ["record", id], queryFn: () => getRecord(id) });
+  const api = useApi();
+  const { data: record, isLoading, error } = useQuery({ queryKey: ["record", id], queryFn: () => api.getRecord(id) });
 
   const fallback = `/saved/${id}`;
 
@@ -55,7 +56,7 @@ const SavedEditPage = () => {
 
   if (record.record_type === "voucher") {
     const handleSave = async (state: VoucherFormState) => {
-      await updateRecord(record.id, "voucher", state as unknown as RecordData, voucherSummary(state), VOUCHER_SIGNATURE_FIELDS);
+      await api.updateRecord(record.id, "voucher", state as unknown as RecordData, voucherSummary(state));
       afterSave("Voucher updated");
     };
     return (
@@ -63,6 +64,7 @@ const SavedEditPage = () => {
         <PageBar title={`Edit Voucher ${record.ref_no ?? ""}`} fallback={fallback} />
         <ExpenseVoucherForm
           initialState={reviveVoucherState(record.data)}
+          employeeName={record.owner_name}
           submitLabel="Save Changes"
           onSave={handleSave}
         />
@@ -71,19 +73,18 @@ const SavedEditPage = () => {
   }
 
   const handleSave = async (values: ServiceFormValues) => {
-    await updateRecord(
-      record.id,
-      serviceRecordType(values),
-      values as unknown as RecordData,
-      serviceSummary(values),
-      SERVICE_SIGNATURE_FIELDS,
-    );
+    await api.updateRecord(record.id, serviceRecordType(values), values as unknown as RecordData, serviceSummary(values));
     afterSave("Report updated");
   };
   return (
     <>
       <PageBar title={`Edit Report ${record.ref_no ?? ""}`} fallback={fallback} />
-      <ServiceReportForm initialValues={reviveServiceValues(record.data)} submitLabel="Save Changes" onSave={handleSave} />
+      <ServiceReportForm
+        initialValues={reviveServiceValues(record.data)}
+        technicianName={record.owner_name}
+        submitLabel="Save Changes"
+        onSave={handleSave}
+      />
     </>
   );
 };

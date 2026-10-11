@@ -74,8 +74,6 @@ export const defaultServiceValues: ServiceFormValues = {
   technicianRemarks: "", technicianName: "", technicianMobile: "", technicianSignature: "",
 };
 
-export const SERVICE_SIGNATURE_FIELDS = ["customerSignature", "technicianSignature"];
-
 /** Restores Date objects after the values went through JSON (storage or database). */
 export function reviveServiceValues(raw: Record<string, unknown>): ServiceFormValues {
   const values = { ...defaultServiceValues, ...raw } as ServiceFormValues;
@@ -90,7 +88,6 @@ export function serviceSummary(values: ServiceFormValues): RecordSummary {
   return {
     refNo: values.reportNo,
     client: values.client,
-    person: values.technicianName,
     date: values.date ? format(values.date, "yyyy-MM-dd") : "",
   };
 }
