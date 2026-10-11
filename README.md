@@ -7,7 +7,7 @@ Fill a form, sign on screen and **Save & Generate**. Every report or voucher is 
 Everyone logs in with a personal **4-digit PIN**. A login lasts 24 hours on that device.
 
 - **Technicians** see, edit and download **only their own** reports and vouchers. Their name is filled in automatically and cannot be changed.
-- **Admins** see, edit and download **everyone's** records, but can never change the technician name on a record.
+- **Admins** see, edit and download **everyone's** records, but can never change the technician name on a record. **Only admins can delete** a report or voucher (their own or anyone's). Deletes are permanent, with a confirmation step.
 
 These rules are enforced by the database itself (see `supabase/schema.sql`), not just hidden in the app.
 

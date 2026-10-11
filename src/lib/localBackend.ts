@@ -148,6 +148,13 @@ export function updateRecord(a: SaveArgs & { p_id: string }): SavedRecord {
   return records[i];
 }
 
+export function deleteRecord(token: string, id: string): void {
+  if (sessionEmployee(token).role !== "admin") throw new Error("NOT_ALLOWED");
+  const records = read<SavedRecord[]>(RECORDS_KEY, []);
+  if (!records.some((r) => r.id === id)) throw new Error("NOT_FOUND");
+  write(RECORDS_KEY, records.filter((r) => r.id !== id));
+}
+
 export function listEmployees(token: string): Employee[] {
   if (sessionEmployee(token).role !== "admin") throw new Error("NOT_ALLOWED");
   return DEMO_EMPLOYEES.map(publicEmployee).sort((x, y) => x.name.localeCompare(y.name));

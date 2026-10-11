@@ -361,6 +361,26 @@ begin
 end;
 $$;
 
+-- Admins only: permanently delete any report or voucher (their own or anyone's).
+create or replace function public.delete_record(p_token uuid, p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v employees := _session_employee(p_token);
+begin
+  if v.role <> 'admin' then
+    raise exception 'NOT_ALLOWED';
+  end if;
+  delete from records where id = p_id;
+  if not found then
+    raise exception 'NOT_FOUND';
+  end if;
+end;
+$$;
+
 -- Admins only: employee list for the "Technician" filter.
 create or replace function public.list_employees(p_token uuid)
 returns table (id uuid, code text, name text, role text)
@@ -386,4 +406,5 @@ grant execute on function public.list_records(uuid, text, text, text, date, date
 grant execute on function public.get_record(uuid, uuid) to anon;
 grant execute on function public.create_record(uuid, text, text, text, date, jsonb) to anon;
 grant execute on function public.update_record(uuid, uuid, text, text, text, date, jsonb) to anon;
+grant execute on function public.delete_record(uuid, uuid) to anon;
 grant execute on function public.list_employees(uuid) to anon;

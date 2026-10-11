@@ -1,14 +1,16 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Loader2, Mail, Pencil, Printer, Share2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import PageBar from "@/components/PageBar";
+import DeleteRecordButton from "@/components/DeleteRecordButton";
 import ServiceReport from "@/components/ServiceReport";
 import ExpenseVoucher from "@/components/ExpenseVoucher";
 import { LAST_LIST_KEY, RECORD_TYPE_LABEL, type SavedRecord } from "@/lib/records";
-import { useApi } from "@/lib/auth";
+import { useApi, useSession } from "@/lib/auth";
 import { reviveServiceValues, toReportData } from "@/lib/serviceReport";
 import { reviveVoucherState, toVoucherData } from "@/lib/voucher";
 import { reportShareLines, shareByEmail, shareOnWhatsApp, voucherShareLines } from "@/lib/share";
@@ -25,6 +27,8 @@ const SavedViewPage = () => {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const api = useApi();
+  const queryClient = useQueryClient();
+  const { employee } = useSession();
   const { data: record, isLoading, error } = useQuery({ queryKey: ["record", id], queryFn: () => api.getRecord(id) });
   const view = useMemo(() => (record ? printable(record) : null), [record]);
 
@@ -60,6 +64,14 @@ const SavedViewPage = () => {
     document.title = previous;
   };
 
+  const handleDelete = async () => {
+    await api.deleteRecord(record.id);
+    queryClient.removeQueries({ queryKey: ["record", record.id] });
+    queryClient.invalidateQueries({ queryKey: ["records"] });
+    toast.success(`${title} deleted`);
+    navigate(listFallback, { replace: true });
+  };
+
   return (
     <div>
       <PageBar title={title} fallback={listFallback}>
@@ -76,6 +88,9 @@ const SavedViewPage = () => {
           <Button variant="outline" size="sm" onClick={() => shareByEmail(lines, title)}>
             <Mail className="h-4 w-4" /> Email
           </Button>
+          {employee.role === "admin" && (
+            <DeleteRecordButton description={`${title} by ${record.owner_name}`} onDelete={handleDelete} />
+          )}
         </div>
       </PageBar>
       {view.kind === "voucher" ? <ExpenseVoucher data={view.data} /> : <ServiceReport data={view.data} />}

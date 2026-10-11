@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo } from "react";
 import {
   SessionExpiredError,
   createRecord,
+  deleteRecord,
   getRecord,
   listEmployees,
   listRecords,
@@ -55,6 +56,7 @@ export function useApi() {
       getRecord: guard(getRecord),
       createRecord: guard(createRecord),
       updateRecord: guard(updateRecord),
+      deleteRecord: guard(deleteRecord),
       listEmployees: guard(listEmployees),
     };
   }, [session, signOut]);

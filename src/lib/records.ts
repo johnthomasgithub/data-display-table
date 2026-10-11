@@ -91,6 +91,7 @@ function localBackend(): Promise<LocalBackend> {
 function toError(message: string): Error {
   if (message.includes("SESSION_EXPIRED")) return new SessionExpiredError();
   if (message.includes("NOT_FOUND")) return new Error("Not found, or you do not have access to it.");
+  if (message.includes("NOT_ALLOWED")) return new Error("Only an admin can do this.");
   if (message.includes("Could not find the function")) {
     return new Error("The database is not set up for PIN login yet. Run supabase/schema.sql in Supabase.");
   }
@@ -207,6 +208,12 @@ export async function updateRecord(
   if (!supabase) return viaLocal((b) => b.updateRecord(args));
   const rows = await rpc<SavedRecord[]>("update_record", args);
   return rows[0];
+}
+
+/** Admins only: permanently deletes a report or voucher. */
+export async function deleteRecord(token: string, id: string): Promise<void> {
+  if (supabase) await rpc("delete_record", { p_token: token, p_id: id });
+  else await viaLocal((b) => b.deleteRecord(token, id));
 }
 
 /** Admins only. */
