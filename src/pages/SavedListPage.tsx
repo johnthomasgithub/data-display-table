@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import DatePicker from "@/components/DatePicker";
 import PageBar from "@/components/PageBar";
 import { CLIENT_OPTIONS } from "@/data/clients";
-import { LAST_LIST_KEY, RECORD_TYPE_LABEL, listRecords, type RecordType } from "@/lib/records";
+import { LAST_LIST_KEY, RECORD_TYPE_LABEL, type RecordType } from "@/lib/records";
+import { useApi, useSession } from "@/lib/auth";
 
 const TYPE_BADGE: Record<RecordType, string> = {
   service: "bg-blue-50 text-blue-700 border-blue-200",
@@ -24,7 +25,7 @@ const TYPE_BADGE: Record<RecordType, string> = {
 const RECORD_TYPES = Object.keys(RECORD_TYPE_LABEL) as RecordType[];
 const isRecordType = (v: string): v is RecordType => (RECORD_TYPES as string[]).includes(v);
 
-const FILTER_KEYS = ["client", "number", "type", "from", "to"] as const;
+const FILTER_KEYS = ["client", "number", "type", "from", "to", "tech"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 
 /** yyyy-MM-dd → dd/MM/yyyy */
@@ -41,6 +42,10 @@ function useDebounced(value: string, ms = 300) {
 }
 
 const SavedListPage = () => {
+  const api = useApi();
+  const { employee } = useSession();
+  const isAdmin = employee.role === "admin";
+
   // Filters live in the URL, so "back" from a record returns to the same list.
   const [params, setParams] = useSearchParams();
   const get = (key: FilterKey) => params.get(key) ?? "";
@@ -61,6 +66,7 @@ const SavedListPage = () => {
   const number = useDebounced(get("number"));
   const dateFrom = get("from");
   const dateTo = get("to");
+  const ownerId = isAdmin ? get("tech") : "";
   const hasFilters = FILTER_KEYS.some((k) => params.get(k));
 
   // Remember the current filters for the back button on a record.
@@ -68,14 +74,21 @@ const SavedListPage = () => {
     sessionStorage.setItem(LAST_LIST_KEY, params.toString());
   }, [params]);
 
+  // The database returns only what this employee may see (admins: everyone).
   const { data: records = [], isLoading, error } = useQuery({
-    queryKey: ["records", { client, number, recordType, dateFrom, dateTo }],
-    queryFn: () => listRecords({ client, number, recordType, dateFrom, dateTo }),
+    queryKey: ["records", { client, number, recordType, dateFrom, dateTo, ownerId }],
+    queryFn: () => api.listRecords({ client, number, recordType, dateFrom, dateTo, ownerId }),
+  });
+
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => api.listEmployees(),
+    enabled: isAdmin,
   });
 
   return (
     <div className="min-h-screen bg-muted/50">
-      <PageBar title="Saved Reports & Vouchers" fallback="/" />
+      <PageBar title={isAdmin ? "All Reports & Vouchers" : "My Reports & Vouchers"} fallback="/" />
       <div className="max-w-3xl mx-auto space-y-3 py-4 px-4">
         {/* Filters */}
         <Card>
@@ -118,6 +131,26 @@ const SavedListPage = () => {
                 </div>
               </div>
             </div>
+
+            {isAdmin && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Technician</Label>
+                <Select value={ownerId || "all"} onValueChange={(v) => set("tech", v === "all" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All technicians</SelectItem>
+                    {employees.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.name}
+                        {e.role === "admin" ? " (Admin)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
@@ -189,7 +222,7 @@ const SavedListPage = () => {
                     <div className="text-sm truncate mt-0.5">{r.client || "—"}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       {showDate(r.record_date)}
-                      {r.person && <> · {r.person}</>}
+                      {isAdmin && <> · {r.owner_name}</>}
                     </div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
