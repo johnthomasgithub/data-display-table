@@ -14,6 +14,11 @@ export default {
     },
     extend: {
       colors: {
+        brand: {
+          blue: "#26529a",
+          teal: "#499f8e",
+          cyan: "#009cdc",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -46,6 +51,12 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        header: {
+          DEFAULT: "hsl(var(--header))",
+          foreground: "hsl(var(--header-foreground))",
+          accent: "hsl(var(--header-accent))",
+          light: "hsl(var(--header-light))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
