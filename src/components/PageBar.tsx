@@ -21,12 +21,12 @@ const PageBar = ({ title, fallback, children }: PageBarProps) => {
   };
 
   return (
-    <div className="sticky top-0 z-30 print:hidden border-b bg-background/95 backdrop-blur">
-      <div className="max-w-5xl mx-auto flex flex-wrap items-center gap-2 px-3 py-2">
+    <div className="sticky top-0 z-30 print:hidden border-b-2 border-primary/20 bg-background/95 backdrop-blur shadow-sm">
+      <div className="max-w-5xl mx-auto flex flex-wrap items-center gap-2 min-h-14 px-3 py-2">
         <Button variant="ghost" size="sm" onClick={goBack} className="-ml-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <h1 className="flex-1 truncate font-semibold">{title}</h1>
+        <h1 className="flex-1 truncate text-lg font-semibold">{title}</h1>
         {children}
       </div>
     </div>
