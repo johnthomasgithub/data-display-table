@@ -9,7 +9,7 @@ All colors MUST be HSL.
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 217 45% 11%;
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
@@ -17,26 +17,32 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 217 60% 38%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 214 45% 95%;
+    --secondary-foreground: 217 60% 28%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 214 45% 96%;
+    --muted-foreground: 217 18% 42%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 168 37% 93%;
+    --accent-foreground: 168 50% 20%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 214 32% 86%;
+    --input: 214 32% 82%;
+    --ring: 217 60% 38%;
 
     --radius: 0.5rem;
+
+    /* App header (top bar). Colours come from the GlaceTech logo: blue #26529A, teal #499F8E, cyan #009CDC. */
+    --header: 217 60% 38%;
+    --header-foreground: 0 0% 100%;
+    --header-accent: 168 37% 44%;
+    --header-light: 217 55% 48%;
 
     --sidebar-background: 0 0% 98%;
 
